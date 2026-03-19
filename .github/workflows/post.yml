@@ -29,5 +29,16 @@ jobs:
       - name: Create token.txt
         run: echo "${{ secrets.LINKEDIN_ACCESS_TOKEN }}" > token.txt
       
+      - name: Test API connection
+        run: |
+          python -c "
+          import os
+          from dotenv import load_dotenv
+          load_dotenv()
+          key = os.getenv('GROQ_API_KEY')
+          print('Key exists:', key is not None)
+          print('Key length:', len(key) if key else 0)
+          "
+    
       - name: Run autoposter
         run: python main.py

@@ -11,6 +11,16 @@ load_dotenv()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 client = Groq(api_key=GROQ_API_KEY)
 
+def get_font(size):
+    font_path = "/tmp/Oswald-Bold.ttf"
+    if not os.path.exists(font_path):
+        print("Downloading font...")
+        url = "https://github.com/google/fonts/raw/main/ofl/oswald/Oswald-Bold.ttf"
+        r = requests.get(url)
+        with open(font_path, "wb") as f:
+            f.write(r.content)
+        print("Font downloaded!")
+    return ImageFont.truetype(font_path, size)
 
 def generate_caption(topic):
     response = client.chat.completions.create(
@@ -73,16 +83,8 @@ def generate_image(topic, caption):
     image = Image.open(io.BytesIO(response.content)).convert("RGB")
     W, H = image.size
     print(f"Image size: {W}x{H}")
-    
-    font_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Oswald-Bold.ttf")
-    print("Font exists:", os.path.exists(font_path))
-    
-    try:
-        font_title = ImageFont.truetype(font_path, 110)
-        print("Font loaded!")
-    except Exception as e:
-        print("Font error:", e)
-        font_title = ImageFont.load_default()
+
+    font_title = get_font(110)
 
     headline = topic
     wrapped = textwrap.wrap(headline, width=12)
@@ -98,10 +100,8 @@ def generate_image(topic, caption):
         bbox = draw.textbbox((0, 0), line, font=font_title)
         text_w = bbox[2] - bbox[0]
         x = (W - text_w) // 2
-        
         for dx, dy in [(-4,-4),(4,-4),(-4,4),(4,4),(-4,0),(4,0),(0,-4),(0,4)]:
             draw.text((x+dx, y+dy), line, font=font_title, fill="black")
-        
         draw.text((x, y), line, font=font_title, fill="#FFD700")
         y += line_height
 

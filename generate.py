@@ -80,11 +80,15 @@ def generate_image(topic, caption):
     image = Image.alpha_composite(image, overlay)
     
     try:
-        font_title = ImageFont.truetype("arialbd.ttf", 42)
-        font_sub = ImageFont.truetype("arial.ttf", 26)
+        font_title = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 52)
+        font_sub = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 30)
     except:
-        font_title = ImageFont.load_default()
-        font_sub = font_title
+        try:
+            font_title = ImageFont.truetype("arialbd.ttf", 52)
+            font_sub = ImageFont.truetype("arial.ttf", 30)
+        except:
+            font_title = ImageFont.load_default()
+            font_sub = font_title
     
     
     headline = caption.split('.')[0]

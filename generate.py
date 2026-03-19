@@ -5,6 +5,7 @@ from groq import Groq
 from dotenv import load_dotenv
 from PIL import Image, ImageDraw, ImageFont
 import requests
+from urllib.parse import quote
 
 load_dotenv()
 
@@ -32,10 +33,6 @@ def generate_caption(topic):
 
 
 def generate_image(topic, caption):
-    HF_TOKEN = os.getenv("HF_TOKEN")
-    API_URL = "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell"
-    headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-    
     prompt_response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[
@@ -59,15 +56,13 @@ def generate_image(topic, caption):
     print("Image prompt:", image_prompt)
     
     print("Generating image...")
-    response = requests.post(
-        API_URL,
-        headers=headers,
-        json={"inputs": image_prompt},
-        timeout=120
-    )
+    prompt_encoded = quote(image_prompt)
+    url = f"https://image.pollinations.ai/prompt/{prompt_encoded}?width=1024&height=1024&nologo=true&seed={hash(topic) % 1000}"
     
-    if response.status_code != 200:
-        print("Error:", response.content[:200])
+    response = requests.get(url, timeout=120)
+    
+    if response.status_code != 200 or "image" not in response.headers.get("Content-Type", ""):
+        print("Error:", response.status_code, response.content[:200])
         return None
     
     image = Image.open(io.BytesIO(response.content)).convert("RGB")

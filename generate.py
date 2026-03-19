@@ -75,48 +75,45 @@ def generate_image(topic, caption):
     
     image = Image.open(io.BytesIO(response.content)).convert("RGBA")
     W, H = image.size
-    
-    overlay = Image.new("RGBA", image.size, (0, 0, 0, 140))
-    image = Image.alpha_composite(image, overlay)
-    
+   
     try:
-        font_title = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 52)
-        font_sub = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 30)
+        font_title = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 80)
+        font_sub = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 40)
     except:
         try:
-            font_title = ImageFont.truetype("arialbd.ttf", 52)
-            font_sub = ImageFont.truetype("arial.ttf", 30)
+            font_title = ImageFont.truetype("arialbd.ttf", 80)
+            font_sub = ImageFont.truetype("arial.ttf", 40)
         except:
             font_title = ImageFont.load_default()
             font_sub = font_title
     
     
     headline = caption.split('.')[0]
-    wrapped = textwrap.wrap(headline, width=22)
+    wrapped = textwrap.wrap(headline, width=18)
     
-    line_height = 55
+    line_height = 90
     total_text_h = len(wrapped) * line_height + 60
+    
+   
     y_start = (H - total_text_h) // 2
     
-    box = Image.new("RGBA", image.size, (0, 0, 0, 0))
-    box_draw = ImageDraw.Draw(box)
-    box_draw.rectangle(
-        [(40, y_start - 20), (W - 40, y_start + total_text_h)],
-        fill=(0, 0, 0, 160)
-    )
-    image = Image.alpha_composite(image, box).convert("RGB")
     draw = ImageDraw.Draw(image)
+    
     
     y = y_start + 10
     for line in wrapped:
         bbox = draw.textbbox((0, 0), line, font=font_title)
         text_w = bbox[2] - bbox[0]
         x = (W - text_w) // 2
-        for dx, dy in [(-2,-2),(2,-2),(-2,2),(2,2)]:
+        
+        
+        for dx, dy in [(-3,-3),(3,-3),(-3,3),(3,3),(-3,0),(3,0),(0,-3),(0,3)]:
             draw.text((x+dx, y+dy), line, font=font_title, fill="black")
+        
+        
         draw.text((x, y), line, font=font_title, fill="#FFD700")
         y += line_height
-    
+
     
     
     image.save("image.png")

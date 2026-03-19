@@ -1,0 +1,33 @@
+name: LinkedIn AutoPoster
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'  
+  workflow_dispatch:          
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      
+      - name: Create .env file
+        run: |
+          echo "GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}" >> .env
+          echo "HF_TOKEN=${{ secrets.HF_TOKEN }}" >> .env
+      
+      - name: Create token.txt
+        run: echo "${{ secrets.LINKEDIN_ACCESS_TOKEN }}" > token.txt
+      
+      - name: Run autoposter
+        run: python main.py

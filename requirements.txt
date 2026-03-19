@@ -1,0 +1,4 @@
+groq
+requests
+pillow
+python-dotenv

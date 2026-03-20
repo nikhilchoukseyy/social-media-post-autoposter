@@ -5,11 +5,11 @@ from groq import Groq
 from dotenv import load_dotenv
 from PIL import Image, ImageDraw, ImageFont
 import requests
-from urllib.parse import quote
 
 load_dotenv()
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+PEXELS_API_KEY = os.getenv("PEXELS_API_KEY")
 client = Groq(api_key=GROQ_API_KEY)
 
 
@@ -32,64 +32,93 @@ def generate_caption(topic):
     return response.choices[0].message.content
 
 
+def get_pexels_image(query):
+    headers = {"Authorization": PEXELS_API_KEY}
+    response = requests.get(
+        "https://api.pexels.com/v1/search",
+        headers=headers,
+        params={"query": query, "per_page": 5, "orientation": "square"}
+    )
+    data = response.json()
+    photos = data.get("photos", [])
+    if not photos:
+        return None
+    import random
+    photo = random.choice(photos)
+    image_url = photo["src"]["large"]
+    img_response = requests.get(image_url, timeout=30)
+    return Image.open(io.BytesIO(img_response.content)).convert("RGB")
+
+
 def generate_image(topic, caption):
-    prompt_response = client.chat.completions.create(
+    search_query_response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[
             {
                 "role": "user",
-                "content": f"""Create a short image generation prompt based on:
-                Topic: "{topic}"
-                Caption: "{caption[:200]}"
-                Rules:
-                - Visually represent the EXACT emotion and message of this caption
-                - Cinematic, photorealistic scene, dramatic lighting
-                - No faces, no text in image
-                - Bright and vivid colors
-                - Maximum 20 words
-                - Return ONLY the prompt, nothing else"""
+                "content": f"""Give me a 2-3 word Pexels image search query for this motivational topic: "{topic}"
+                - Should return beautiful, inspiring photos
+                - Examples: "mountain sunrise", "ocean waves", "forest path"
+                - Return ONLY the search query, nothing else"""
             }
         ]
     )
     
-    image_prompt = prompt_response.choices[0].message.content.strip()
-    print("Image prompt:", image_prompt)
+    search_query = search_query_response.choices[0].message.content.strip()
+    print("Pexels search query:", search_query)
     
-    print("Generating image...")
-    prompt_encoded = quote(image_prompt)
-    url = f"https://image.pollinations.ai/prompt/{prompt_encoded}?width=1024&height=1024&nologo=true&seed={hash(topic) % 1000}"
-    
-    response = requests.get(url, timeout=120)
-    
-    if response.status_code != 200 or "image" not in response.headers.get("Content-Type", ""):
-        print("Error:", response.status_code, response.content[:200])
+    image = get_pexels_image(search_query)
+    if image is None:
+        image = get_pexels_image("motivation success")
+    if image is None:
+        print("Image fetch failed!")
         return None
     
-    image = Image.open(io.BytesIO(response.content)).convert("RGB")
     W, H = image.size
     print(f"Image size: {W}x{H}")
 
-    try:
-        font_title = ImageFont.truetype(
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf", 
-            110
-        )
-        print("Font loaded!")
-    except Exception as e:
-        print("Font error:", e)
-        font_title = ImageFont.load_default()
+    overlay = Image.new("RGBA", image.size, (0, 0, 0, 110))
+    image = Image.alpha_composite(image.convert("RGBA"), overlay).convert("RGB")
 
-    headline = topic
-    wrapped = textwrap.wrap(headline, width=12)
-    print("Wrapped:", wrapped)
+    font_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ArchivoBlack-Regular.ttf")
+    print("Font exists:", os.path.exists(font_path))
 
-    line_height = 125
-    total_text_h = len(wrapped) * line_height
-    y = (H - total_text_h) // 2
+    padding_x = 40
+    padding_y = 40
+    max_text_width = W - (padding_x * 2)
 
     draw = ImageDraw.Draw(image)
+
+    font_size = 40
+    font_title = ImageFont.truetype(font_path, font_size)
+    wrapped = textwrap.wrap(topic, width=18)
+
+    while font_size > 20:
+        font_title = ImageFont.truetype(font_path, font_size)
+        wrapped = textwrap.wrap(topic, width=18)
+        fits = all(
+            draw.textbbox((0, 0), line, font=font_title)[2] <= max_text_width
+            for line in wrapped
+        )
+        if fits:
+            break
+        font_size -= 4
+
+    print(f"Font size used: {font_size}")
+    print("Wrapped:", wrapped)
+
+    line_height = int(font_size * 1.3)
+    total_text_h = len(wrapped) * line_height
     
+    max_text_height = H - (padding_y * 2)
+    if total_text_h > max_text_height:
+        total_text_h = max_text_height
+
+    y = (H - total_text_h) // 2
+
     for line in wrapped:
+        if y + line_height > H - padding_y:
+            break
         bbox = draw.textbbox((0, 0), line, font=font_title)
         text_w = bbox[2] - bbox[0]
         x = (W - text_w) // 2

@@ -22,11 +22,8 @@ def get_topic():
         messages=[
             {
                 "role": "user",
-                "content": """Give me ONE unique motivational topic for a LinkedIn post today.
-                - Should be fresh and specific
-                - Not generic like 'believe in yourself'
-                - Examples: 'Why rejection is the best teacher', 'The power of doing hard things daily'
-                - Return ONLY the topic, nothing else, no quotes"""
+                "content": """Give me ONE unique motivational quote for a LinkedIn post today.
+                - Should be fresh and specific , length should be 25-30 words"""
             }
         ]
     )
